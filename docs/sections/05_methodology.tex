@@ -1,0 +1,81 @@
+% ============================================================================
+%  05_methodology.tex --- Regional taxonomy, thresholds, scaling, statistics
+% ============================================================================
+
+\section{Methodology}
+\label{sec:methodology}
+
+This section documents the analytical decisions that turn the cleaned panel into the objects of study used in the results chapters: the regional classification, the sub-setting thresholds, the scaling of the indicators, and the family of descriptive statistics that are reported.
+
+\subsection{Regional Taxonomy}
+\label{sec:methodology-taxonomy}
+
+The WHR ships its own regional classification, a hybrid of the United Nations \emph{M49} standard \parencite{un_m49} and the operating regions of the Gallup World Poll \parencite{gallup_world_poll}. It defines ten regions, with sizes that vary by two orders of magnitude: \emph{Sub-Saharan Africa} aggregates 41 countries, while \emph{North America and Australia and New Zealand} aggregates four. This imbalance has a direct consequence for any regional statistic: the ten-region taxonomy is dominated by two or three large regions and hides almost everything about the small ones.
+
+This report therefore adopts a \emph{revised regional taxonomy} with three layers, all preserved in the panel as separate columns:
+\begin{enumerate}
+	\item \texttt{WHR\_Region}: the original ten-value WHR taxonomy, retained as an \emph{audit trail} so that any downstream result can be traced back to the source label.
+	\item \texttt{Subregion}: an eleven-value taxonomy derived from \texttt{WHR\_Region} with four structural changes.
+	\item \texttt{Region}: a four-value continent taxonomy (\emph{Africa}, \emph{Americas}, \emph{Asia}, \emph{Europe}), obtained by aggregating \texttt{Subregion}.
+\end{enumerate}
+
+\paragraph{Derivation of \texttt{Subregion}.} The eleven subregions are the ten original WHR regions after four structural changes:
+\begin{itemize}
+	\item \textbf{CIS merged into CEE.} The \emph{Commonwealth of Independent States} appears as a separate category only in some years; in the years where it is absent, the same countries appear under \emph{Central and Eastern Europe}. Merging the two resolves the inconsistency.
+	\item \textbf{NA-ANZ split.} The original \emph{North America and Australia and New Zealand} block, which contains only \emph{United\ States}, \emph{Canada}, \emph{Australia}, and \emph{New\ Zealand}, is split into \emph{North\ America} (\emph{United\ States}, \emph{Canada}) and \emph{Australia\ and\ New\ Zealand} (\emph{Australia}, \emph{New\ Zealand}).
+	\item \textbf{MENA split.} The original \emph{Middle East and Northern Africa} block, which mixes two distinct groups, is split into \emph{Middle\ East} and \emph{North\ Africa} (the latter covering \emph{Algeria}, \emph{Egypt}, \emph{Libya}, \emph{Morocco}, \emph{Tunisia}).
+	\item \textbf{Turkiye override.} Turkiye is assigned to \emph{Central\ and\ Eastern\ Europe} rather than \emph{Middle\ East}, following the country's OECD and EU-candidate classification rather than its geographic position.
+\end{itemize}
+A handful of countries absent from the 2015 source-of-truth file received manual subregion assignments (for example, \emph{Gambia}, \emph{Namibia}, and \emph{South\ Sudan} to \emph{Sub-Saharan\ Africa}; \emph{Belize} and \emph{Puerto\ Rico} to \emph{North\ America}). Most of these are ghost, or residual-dropped during cleaning; the ones that survive end up in the subregion their geography suggests.
+
+\paragraph{Derivation of \texttt{Region}.} The four continents are obtained from \texttt{Subregion} by mapping:
+\begin{itemize}
+	\item \emph{Western\ Europe}, \emph{Central\ and\ Eastern\ Europe} $\to$ \textbf{Europe};
+	\item \emph{Southeast\ Asia}, \emph{South\ Asia}, \emph{East\ Asia}, \emph{Middle\ East}, \emph{Australia\ and\ New\ Zealand} $\to$ \textbf{Asia};
+	\item \emph{Latin\ America\ and\ Caribbean}, \emph{North\ America} $\to$ \textbf{Americas};
+	\item \emph{North\ Africa}, \emph{Sub-Saharan\ Africa} $\to$ \textbf{Africa}.
+\end{itemize}
+\emph{Australia and New Zealand} are assigned to \emph{Asia} following the United Nations Economic and Social Commission for Asia and the Pacific (UNESCAP) ``Asia-Pacific'' convention \parencite{unescap}.
+
+\paragraph{Distribution before and after cleaning.} \Cref{tab:country-dist} reports the \emph{pre-cleaning} distribution of countries across the eleven subregions (165 countries). After the ghost and residual drops of \cref{sec:data-cleaning-missing}, the final panel of 158 countries is distributed as follows: \emph{Sub-Saharan\ Africa} 41, \emph{Central\ and\ Eastern\ Europe} 30, \emph{Latin\ America\ and\ Caribbean} 22, \emph{Western\ Europe} 21, \emph{Middle\ East} 13, \emph{Southeast\ Asia} 9, \emph{South\ Asia} 7, \emph{East\ Asia} 6, \emph{North\ Africa} 5, \emph{North\ America} 2, \emph{Australia\ and\ New\ Zealand} 2. The continent-level distribution, reported pre-cleaning in \cref{tab:country-dist-region}, becomes \emph{Europe} 51, \emph{Africa} 46, \emph{Asia} 37, \emph{Americas} 24 after the drops.
+
+\input{tables/country_distribution_subregion.tex}
+
+\subsection{Analysis Thresholds}
+\label{sec:methodology-thresholds}
+
+Two thresholds control which subregions receive which kind of analysis. Both are applied on the \emph{post-cleaning} counts.
+
+\begin{itemize}
+	\item \textbf{Detailed subregion analysis} (\texttt{MIN\_COUNTRIES\_SUBREGION} = 7). Subregions with at least seven countries receive a top-4 and bottom-4 table of countries ranked by mean Happiness. Seven subregions qualify: \emph{Sub-Saharan\ Africa} (41), \emph{Central\ and\ Eastern\ Europe} (30), \emph{Latin\ America\ and\ Caribbean} (22), \emph{Western\ Europe} (21), \emph{Middle\ East} (13), \emph{Southeast\ Asia} (9), \emph{South\ Asia} (7). The four remaining subregions: \emph{East\ Asia} (6), \emph{North\ Africa} (5), \emph{North\ America} (2), \emph{Australia\ and\ New\ Zealand} (2); are reported in prose, with every country listed in descending order of mean Happiness.
+	\item \textbf{Subregion correlation analysis} (\texttt{MIN\_COUNTRIES\_CORRELATION} = 15). Subregions with at least fifteen countries receive a within-subregion Pearson correlation matrix. Four qualify: \emph{Sub-Saharan\ Africa} (41), \emph{Central\ and\ Eastern\ Europe} (30), \emph{Latin\ America\ and\ Caribbean} (22), \emph{Western\ Europe} (21). Smaller subregions are excluded because Pearson \(r\) is unstable at small \(n\): a single outlier can move \(r\) by $\pm 0.2$.
+\end{itemize}
+
+\emph{South Asia} sits exactly at the detail threshold of seven countries; its top-4 and bottom-4 therefore overlap by one country (\emph{Bangladesh}). This overlap is reported explicitly in \cref{sec:results-rankings}.
+
+\subsection{Normalization Strategy}
+\label{sec:methodology-normalization}
+
+For the six core indicators used in comparative analysis, the panel values are min--max scaled to $[0,1]$ across the pooled sample:
+\[
+\tilde x_i = \frac{x_i - \min(x)}{\max(x) - \min(x)}.
+\]
+The transformation is applied once, \emph{pooled} across all years and countries, so that the scaled value is comparable across indicators and across the whole period. Note that \emph{Corruption} has already been normalized within each year in \cref{sec:data-cleaning-corruption}; the pooled min--max is a second, orthogonal scaling. The first fixes the \emph{within-year rank}; the second fixes the \emph{global position} used for cross-indicator comparison.
+
+Two caveats follow. First, the six indicators share the same nominal range $[0,1]$ after scaling, so their standard deviations are comparable; but they are not commensurable: a one-unit change in scaled GDP is not a one-unit change in scaled Happiness. The scaling is a display and grouping device, not a unit conversion. Second, the substantive analysis is based on \emph{ranks} (Spearman), \emph{year-restricted subsets} (Pearson per year), or \emph{countries-ranked-by-mean} (rankings), all of which are invariant to the specific monotone rescaling chosen.
+
+A standard scaler was also fit for comparison only and is not used downstream. The min--max version is preferred because the \emph{shape} of the distributions, visible in the histograms of \cref{sec:results-descriptive}, is what the report discusses.
+
+\subsection{Statistical Approach}
+\label{sec:methodology-statistics}
+
+The analysis is descriptive throughout; no causal claim is made at any point. Four families of statistics are reported.
+
+\begin{itemize}
+	\item \textbf{Descriptive statistics.} Mean, standard deviation, quartiles, and range of the six scaled core indicators, pooled over countries and years, in \cref{tab:descriptive}. Continent-level aggregates are reported in \cref{tab:region-agg}.
+	\item \textbf{Pearson correlations.} Reported at four aggregation levels: (i) pooled across all country--year rows (\cref{tab:correlation}); (ii) per year (\cref{tab:corr-year}); (iii) within each continent (\cref{tab:corr-region}); (iv) within each of the four subregions with $n \geq 15$ (\cref{tab:corr-subregion}). These four levels are not redundant: they answer different questions. The per-year correlations are the primary evidence for the GDP--Happiness relationship, because the pooled coefficient is attenuated by between-year variance (see \cref{sec:results-relations-simpson}).
+	\item \textbf{Spearman correlations.} Reported for the six core indicators pooled, as a rank-based robustness check against the right-skewed distribution of GDP per capita. Spearman values sit close to the Pearson values, indicating that the substantive conclusions do not depend on linearity.
+	\item \textbf{Rankings.} Top-\(k\) and bottom-\(k\) countries by mean Happiness, at three levels: global (\cref{tab:top-bottom-global}), subregion (\cref{tab:top-bottom-sub}), continent (\cref{tab:top-bottom-cont}). Rankings use the mean of the scaled Happiness across the eleven years, so every country contributes one observation per year to its mean.
+\end{itemize}
+
+\paragraph{Why per-year correlations are primary.} Following \textcite{bland1995}, Pearson correlation on repeated measures is interpretable only if the within-subject and between-subject sources of variance are disentangled. The pooled coefficient on the WHR panel mixes three sources: (i) the between-country signal within a year, (ii) the within-country signal across years, and (iii) year-level shocks (for example, the COVID-19 pandemic in 2020) that move Happiness without moving GDP. Per-year coefficients isolate (i); the pooled coefficient mixes all three. The pooled coefficient is reported for completeness, but the substantive reading in \cref{sec:results-relations} is based on the per-year values. The general phenomenon, known as \emph{aggregation attenuation}, or \emph{Simpson's paradox} in its strongest inversion form, is discussed explicitly in \cref{sec:results-relations-simpson} with the original formulation in \textcite{simpson1951}.

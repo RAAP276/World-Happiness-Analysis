@@ -1,0 +1,96 @@
+% ============================================================================
+%  04_data_cleaning.tex --- Standardization, 2013 fixes, 2014 rebuild,
+%                           GDP recovery, interpolation, drops, final panel
+% ============================================================================
+
+\section{Data Cleaning}
+\label{sec:data-cleaning}
+
+The raw files, as distributed, cannot be concatenated directly. They use different column names for the same concept, different country names for the same country, and different scales for the same indicator. This section documents every transformation applied to the panel before it becomes analysis-ready.
+
+\subsection{Column Name Standardization}
+\label{sec:data-cleaning-columns}
+
+Across the ten source files, sixteen concepts appear under multiple spellings. The headline score, for example, is labeled \texttt{Happiness\ Score} in 2015--2016, \texttt{Happiness.Score} in 2017, \texttt{Score} in 2019, and \texttt{Ladder\ score} in 2020--2023. A single canonical alias map was constructed, mapping each spelling to one canonical name, and applied to every yearly file.
+
+The sixteen canonical concepts are \texttt{Country}, \texttt{Region}, \texttt{Happiness}, \texttt{Happiness\ Rank}, \texttt{GDP\ per\ capita}, \texttt{Logged\ GDP\ per\ capita}, \texttt{Life\ Expectancy}, \texttt{Freedom}, \texttt{Social\ Support}, \texttt{Generosity}, \texttt{Corruption}, \texttt{Dystopia\ +\ residual}, \texttt{Ladder\ score\ in\ Dystopia}, \texttt{Standard\ error},\\ \texttt{Upper\ Confidence\ Interval}, and \texttt{Lower\ Confidence\ Interval}. When a year ships \emph{both} a raw column and its \texttt{Explained\ by:} normalized counterpart, the raw column is dropped and the normalized one retained, matching the original WHR analysis convention.
+
+\subsection{Country Name Standardization}
+\label{sec:data-cleaning-countries}
+
+Country names vary across years: \emph{Turkey} vs.\ \emph{Turkiye}, \emph{Czechia} vs.\ \emph{Czech\ Republic}, \emph{Hong\ Kong\ S.A.R.\ of\ China} vs.\ \emph{Hong\ Kong}, \emph{Swaziland} vs.\ \emph{Eswatini}. Thirty-two aliases were mapped to a canonical name. Particular care was taken to keep distinct entities distinct: \emph{Congo\ (Brazzaville)} is mapped to \emph{Congo}, while \emph{Congo\ (Kinshasa)} is mapped to \emph{R.D.Congo}; these are two different countries and are kept separate throughout the analysis.
+
+\subsection{Year-2013 Anomalies}
+\label{sec:data-cleaning-2013}
+
+Three variables are on incompatible scales in 2013 relative to the rest of the panel:
+\begin{itemize}
+	\item \textbf{GDP per capita} is reported in absolute units (thousands of international dollars), not on the $[0,1]$ axis used from 2015 onward. It was rescaled to $[0,1]$ by min--max normalization \emph{within 2013}.
+	\item \textbf{Life Expectancy} is reported in absolute years, not on the $[0,1]$ axis used from 2015 onward. It was rescaled to $[0,1]$ by min--max normalization \emph{within 2013}.
+	\item \textbf{Corruption} is reported with the opposite orientation: in 2013 higher values indicate \emph{more} corruption, whereas from 2015 onward higher values indicate \emph{less} corruption. It was inverted with $x \mapsto 1 - x$ so that ``higher is better'' holds throughout the panel.
+\end{itemize}
+Without these fixes, concatenating the yearly files would have corrupted the pooled distribution of three of the six core indicators.
+
+\subsection{Corruption Normalization}
+\label{sec:data-cleaning-corruption}
+
+After the 2013 inversion, every year in the panel has Corruption on a consistent \emph{direction} (higher = less corrupt). The \emph{scale} still differs across years: 2013 ranges roughly over $[0.03, 0.92]$ with mean $\approx 0.25$, while 2015 onward ranges roughly over $[0.00, 0.55]$ with mean $\approx 0.13$.
+
+To make years comparable, Corruption is \emph{min--max normalized within each year} to $[0, 1]$. The semantic consequence is that a normalized Corruption value is a \emph{relative position within the year} (0 = most corrupt country of that year, 1 = least corrupt country of that year), not an absolute level. Cross-year level comparisons are therefore invalid: a value of 0.70 means ``relatively uncorrupt for that year'' in every year, but it does not mean the same absolute level of corruption in 2013 as in 2023.
+
+A sanity check on the final panel confirms that every year satisfies $\min = 0$ and $\max = 1$ for Corruption.
+
+\subsection{Reconstruction of 2014}
+\label{sec:data-cleaning-2014}
+
+Since 2014 sits between two years that \emph{are} present, it was reconstructed as the country-by-country average of 2013 and 2015:
+\[
+x_{2014,i} = \frac{x_{2013,i} + x_{2015,i}}{2}.
+\]
+The average is computed on an \emph{inner join on \texttt{Country}}: only countries present in both 2013 and 2015 contribute to 2014. As a result, 2014 contains \textbf{154 countries}, four fewer than the 158 that remain after the ghost and residual drops of \cref{sec:data-cleaning-missing}.
+
+Corruption for 2014 requires one extra step. Because it is the mean of two \emph{already normalized} values, it lands strictly inside $[0,1]$ and does not touch the boundaries. To preserve the within-year normalization convention, 2014 Corruption was re-normalized to $[0,1]$ after averaging. This is a monotone transformation, so the ranking of countries within 2014 is preserved.
+
+\subsection{GDP Recovery for 2020, 2021, and 2023}
+\label{sec:data-cleaning-gdp}
+
+Those three years ship the log-transformed \texttt{Logged\ GDP\ per\ capita} but not the raw \texttt{GDP\ per\ capita}. The log is inverted with $\exp(\cdot)$ before filling, so that all years speak in the same units:
+\[
+\text{GDP}_{y,i} = \exp\!\big(\text{Logged GDP}_{y,i}\big), \qquad y \in \{2020,\ 2021,\ 2023\}.
+\]
+Filling directly from the logged column would have mixed logarithmic and absolute units, which would have skewed every downstream scaling operation. After this fill, the \texttt{GDP\ per\ capita} column has no NaN in those three years.
+
+\subsection{Missing Data: Interpolation, Drops, and Imputation}
+\label{sec:data-cleaning-missing}
+
+After concatenation and sorting by country and year, missing values are handled in four sequential steps.
+
+\paragraph{Interpolation.} Numerical columns are interpolated \emph{per country} with a cap of three years and bidirectional filling:
+\[
+\texttt{groupby(Country).interpolate(method="linear",\ limit=3,\ limit\_direction="both")}.
+\]
+Gaps of up to three consecutive years within a country are filled linearly; gaps longer than three years remain NaN. The cap is deliberate: a long gap is not a missing value to be interpolated away, it is a missing value that should trigger a drop.
+
+\paragraph{Column diagnostic.} \Cref{tab:core-cols} reports the columns that still contain NaN after interpolation, together with the count and percentage of missing rows. Five columns exceed 10\% missing: \texttt{Donation}, \texttt{Positive\ Affect}, \texttt{Negative\ Affect}, and \texttt{Happiness\ (Yesterday)} (all at 63.18\%), plus \texttt{Ladder\ score\ in\ Dystopia} and \texttt{Logged\ GDP\ per\ capita} (both at 37.61\%). These are excluded from the core set. The remaining eleven columns each have fewer than 1\% NaN and constitute the \texttt{CORE\_COLS} used downstream.
+
+\input{tables/core_cols.tex}
+
+\paragraph{Ghost-country drop (Rule~1).} A ``ghost'' country is one that appears in at most three of the eleven panel years. Six such countries are dropped: \emph{Belize}, \emph{Djibouti}, \emph{Maldives}, \emph{Oman}, \emph{Puerto\ Rico}, and \emph{Somaliland}. These are countries whose presence in the panel is too sparse for any per-country statistic to be meaningful.
+
+\paragraph{Residual drop (Rule~2).} A country is dropped if it still has at least four NaN in \emph{any} core column after interpolation. One country meets this criterion: \emph{Somalia}, whose \texttt{Standard\ error} column has a gap exceeding the three-year interpolation cap.
+
+After both drops, five residual NaN remain across \texttt{Upper\ Confidence\ Interval} (1), \texttt{Lower\ Confidence\ Interval} (1), and \texttt{Standard\ error} (5). They are imputed with the \emph{country mean} of the same column, preserving within-country level, with a global mean as a defensive fallback. In the current run, the country-mean imputation covers all of them; the global fallback is never triggered.
+
+\subsection{Final Panel}
+\label{sec:data-cleaning-final}
+
+The final panel contains:
+\begin{itemize}
+	\item \textbf{1,658 rows} (country--year observations across 11 years),
+	\item \textbf{158 unique countries},
+	\item \textbf{15 columns}: four index columns (\texttt{Year}, \texttt{Country}, \texttt{Region}, \texttt{Subregion}) and eleven core indicators (\texttt{Happiness}, \texttt{GDP\ per\ capita}, \texttt{Life\ Expectancy}, \texttt{Freedom}, \texttt{Social\ Support}, \texttt{Generosity}, \texttt{Corruption}, \texttt{Dystopia\ +\ residual}, \texttt{Upper\ Confidence\ Interval}, \texttt{Lower\ Confidence\ Interval}, \texttt{Standard\ error}).
+\end{itemize}
+
+Of the eleven core indicators, \textbf{six} drive the comparative analysis of this report: \texttt{Happiness}, \texttt{GDP\ per\ capita}, \texttt{Life\ Expectancy}, \texttt{Freedom}, \texttt{Social\ Support}, and \texttt{Corruption}. The remaining five are retained in the panel for completeness but are not used in the six-indicator comparison. Their exclusion is motivated as follows: the two confidence-interval bounds and the standard error are statistical uncertainty measures rather than substantive indicators; \texttt{Dystopia\ +\ residual} is a model residual, not a country-level attribute; and \texttt{Generosity} is a composite of charitable giving that is hard to interpret on the same footing as the other five.
+
+One ordinal variable is dropped before the panel is finalized: \texttt{Happiness\ Rank}. The original rank was computed per year on a different country composition; after the six ghost drops and the reconstruction of 2014, the rank no longer means what it did in the source report. New ordinal variables, if needed, are derived from quantile classification, described in \cref{sec:methodology}.

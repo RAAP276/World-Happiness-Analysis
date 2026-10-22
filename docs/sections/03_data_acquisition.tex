@@ -1,0 +1,29 @@
+% ============================================================================
+%  03_data_acquisition.tex --- Source, files, years, reproducible download
+% ============================================================================
+
+\section{Data Acquisition}
+\label{sec:data-acquisition}
+
+The empirical basis of this report is the \emph{World Happiness Report} (WHR) panel for the eleven years between 2013 and 2023, distributed as a public dataset on Kaggle \parencite{kaggle_whr}. The WHR is an annual publication coordinated by the Sustainable Development Solutions Network \parencite{helliwell2013,helliwell2023}, and its headline indicators are derived from the Gallup World Poll \parencite{gallup_world_poll}. The dataset used here is the Kaggle mirror of that publication, covering the full 2013--2023 span.
+
+\subsection{Files and Years}
+
+The distribution contains ten CSV files, one per calendar year, with \emph{no native file for 2014}. The years present in the raw download are therefore
+\[
+\{2013,\ 2015,\ 2016,\ 2017,\ 2018,\ 2019,\ 2020,\ 2021,\ 2022,\ 2023\}.
+\]
+The missing 2014 is not an artefact of the download: it reflects the publication history of the source, which did not issue an independent 2014 file in this distribution. The reconstruction of 2014 from the two neighbouring years is documented in \cref{sec:data-cleaning-2014}.
+
+Each yearly file contains roughly 150 to 170 country observations. Every row reports one country in one year, and every file exposes a small set of indicators: a headline Happiness score, together with measures of GDP per capita, healthy life expectancy, freedom to make life choices, social support, generosity, and perceptions of corruption. Column names, column coverage, and column scales vary across years; reconciling them is the subject of \cref{sec:data-cleaning}.
+
+\subsection{Reproducible Download}
+\label{sec:data-acquisition-download}
+
+Instead of downloading the files manually, the pipeline retrieves them programmatically through \texttt{kagglehub} \parencite{kagglehub}, Kaggle's official Python client. The download is keyed to a dataset slug and validated against an explicit set of required years:
+\begin{quote}
+	\texttt{REQUIRED\_YEARS\ =\ \{2013,\ 2015,\ 2016,\ 2017,\ 2018,\ 2019,\ 2020,\ 2021,\ 2022,\ 2023\}}.
+\end{quote}
+If any required year is missing from the local cache, the client downloads the dataset; if a year is still absent after the download, the pipeline raises an explicit error and stops. This makes the acquisition step \emph{self-validating}: the analysis cannot silently proceed on an incomplete panel.
+
+The complete acquisition step, together with library versions and environment details, is documented in \cref{sec:reproducibility}.
