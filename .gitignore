@@ -1,0 +1,39 @@
+# Data — regenerated automatically by kagglehub
+data/
+docs/data/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Virtual envs
+.venv/
+venv/
+env/
+.conda/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Bug leftover (carpeta con punto inicial que se creó por error)
+.docs/
+
+# LaTeX build artifacts (si compilas local)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+sections/*.aux
